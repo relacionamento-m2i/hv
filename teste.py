@@ -56,7 +56,7 @@ MESES_ABREV = {
 
 SOCIOS = {
     "FERNANDO GADELHA", "ALINE PAIVA", "ANA ELISABETH", "CAMILA GADELHA",
-    "CAMILA LACERDA", "GABRIELLA ALVES", "ISABELLA W QUEIROGA", "KEYLLA MENEZES", "MARIELLE MEDEIROS"
+    "CAMILA LACERDA", "GABRIELLA ALVES", "ISABELLA W QUEIROGA", "KEYLLA MENEZES", "MARIELLE MEDEIROS", "AMANDA ELIZA", "RAQUEL MENEZES"
 }
 
 FELLOWS = {
@@ -300,34 +300,56 @@ else:
 st.markdown('</div>', unsafe_allow_html=True)
 
 # =========================
-# ITEM 3 - TOP 3 RANKINGS (BARRAS)
+# ITEM 3 - TOP 5 RANKINGS (BARRAS)
 # =========================
 st.markdown('<div class="section-card">', unsafe_allow_html=True)
-st.subheader("3. Ranking de médicos (1º, 2º e 3º lugar)")
+st.subheader("3. Ranking de médicos (Top 5)")
 
 if df_medicos.empty:
     st.info("Sem dados para montar ranking.")
 else:
     r1, r2, r3 = st.columns(3)
-    layout_top = dict(margin=dict(l=10, r=10, t=40, b=10), yaxis_title="", xaxis_title="")
+    
+    # Layout forçando a ordenação
+    layout_top = dict(
+        margin=dict(l=10, r=10, t=40, b=10), 
+        yaxis_title="", 
+        xaxis_title="",
+        yaxis={'categoryorder': 'total ascending'}
+    )
 
-    # nlargest é mais eficiente que sort_values().head()
-    top_cons = df_medicos.nlargest(3, "Consultas").sort_values("Consultas", ascending=True)
-    top_exam = df_medicos.nlargest(3, "Exames").sort_values("Exames", ascending=True)
-    top_ciru = df_medicos.nlargest(3, "Cirurgias").sort_values("Cirurgias", ascending=True)
+    # 1. CRIANDO O MAPA DE CORES FIXO
+    cores_padrao_grupo = {
+        "Sócios": "#0d6efd",         # Azul Escuro
+        "Fellows": "#6ea8fe",        # Azul Claro
+        "Corpo Clínico": "#dc3545"   # Vermelho
+    }
+
+    top_cons = df_medicos.nlargest(5, "Consultas")
+    top_exam = df_medicos.nlargest(5, "Exames")
+    top_ciru = df_medicos.nlargest(5, "Cirurgias")
 
     with r1:
-        fig_top_cons = px.bar(top_cons, x="Consultas", y="Médico", color="Grupo", orientation="h", text="Consultas", title="Top 3 - Consultas")
+        # 2. APLICANDO O color_discrete_map
+        fig_top_cons = px.bar(top_cons, x="Consultas", y="Médico", color="Grupo", 
+                              orientation="h", text="Consultas", title="Top 5 - Consultas",
+                              color_discrete_map=cores_padrao_grupo)
         fig_top_cons.update_layout(**layout_top)
         st.plotly_chart(fig_top_cons, use_container_width=True)
 
     with r2:
-        fig_top_exam = px.bar(top_exam, x="Exames", y="Médico", color="Grupo", orientation="h", text="Exames", title="Top 3 - Exames")
+        # 2. APLICANDO O color_discrete_map
+        fig_top_exam = px.bar(top_exam, x="Exames", y="Médico", color="Grupo", 
+                              orientation="h", text="Exames", title="Top 5 - Exames",
+                              color_discrete_map=cores_padrao_grupo)
         fig_top_exam.update_layout(**layout_top)
         st.plotly_chart(fig_top_exam, use_container_width=True)
 
     with r3:
-        fig_top_ciru = px.bar(top_ciru, x="Cirurgias", y="Médico", color="Grupo", orientation="h", text="Cirurgias", title="Top 3 - Cirurgias")
+        # 2. APLICANDO O color_discrete_map
+        fig_top_ciru = px.bar(top_ciru, x="Cirurgias", y="Médico", color="Grupo", 
+                              orientation="h", text="Cirurgias", title="Top 5 - Cirurgias",
+                              color_discrete_map=cores_padrao_grupo)
         fig_top_ciru.update_layout(**layout_top)
         st.plotly_chart(fig_top_ciru, use_container_width=True)
 
