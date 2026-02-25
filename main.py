@@ -238,7 +238,8 @@ st.write("") # Espaço em branco
 st.markdown("**Taxas de Conversão (Global do Filtro)**")
 t1, t2, t3, t4 = st.columns(4)
 
-t1.metric("Exames por Consulta", f"{taxa_exam_cons:.2f}x".replace(".", ","), help="Para cada 1 consulta, quantos exames são realizados.")
+# ALTERAÇÃO AQUI: Passou de {:.2f} para {:.3f}
+t1.metric("Exames por Consulta", f"{taxa_exam_cons:.3f}x".replace(".", ","), help="Para cada 1 consulta, quantos exames são realizados.")
 t2.metric("Conversão (Exames/Cons)", formatar_pct(taxa_exam_cons * 100))
 t3.metric("Conversão (Cirurgias/Cons)", formatar_pct(taxa_ciru_cons * 100), help="Percentual de consultas que resultam em cirurgia.")
 t4.metric("Consultas p/ 1 Cirurgia", f"{cons_para_ciru:.2f}".replace(".", ","), help="Quantas consultas em média são necessárias para gerar 1 cirurgia.")
