@@ -66,9 +66,9 @@ FELLOWS = {
 
 # Fixando as cores para evitar confusão no visual
 CORES_GRUPO = {
-    "Sócios": "#0d6efd",         # Azul Escuro
-    "Fellows": "#6ea8fe",        # Azul Claro
-    "Corpo Clínico": "#dc3545"   # Vermelho
+    "Sócios": "#0d6efd",        # Azul Escuro
+    "Fellows": "#6ea8fe",       # Azul Claro
+    "Corpo Clínico": "#dc3545"  # Vermelho
 }
 
 # =========================
@@ -97,13 +97,12 @@ def criar_ano_mes_label_vetorizado(anos, meses):
 
 def classificar_perfil_vetorizado(df):
     condicoes = [
-        (df["Consultas"] == 0) & (df["Cirurgias"] > 0),
-        (df["Cirurgias"] == 0) & (df["Consultas"] > 0),
-        (df["Consultas"] == 0) & (df["Cirurgias"] == 0) & (df["Exames"] > 0),
-        (df["Consultas"] > 0) & ((df["Cirurgias"] / df["Consultas"]) >= 0.35),
-        (df["Consultas"] > 0) & ((df["Cirurgias"] / df["Consultas"]) <= 0.10)
+        (df["Consultas"] == 0) & (df["Cirurgias"] > 0), # Só opera
+        (df["Cirurgias"] == 0) & (df["Total"] > 0),     # Não opera (só faz consulta ou exame)
+        (df["Consultas"] > 0) & ((df["Cirurgias"] / df["Consultas"]) >= 0.35), # Alta conversão
+        (df["Consultas"] > 0) & ((df["Cirurgias"] / df["Consultas"]) <= 0.10)  # Baixa conversão
     ]
-    escolhas = ["Cirúrgico", "Clínico", "Diagnóstico", "Cirúrgico", "Clínico"]
+    escolhas = ["Cirúrgico", "Clínico", "Cirúrgico", "Clínico"]
     return np.select(condicoes, escolhas, default="Misto")
 
 # =========================
@@ -224,6 +223,7 @@ c3.metric("Tot. Cirurgias", formatar_num(total_ciru))
 c4.metric("Total Geral", formatar_num(total_geral))
 
 st.write("") # Espaço em branco
+
 # Exibição Médias
 st.markdown("**Média Mensal**")
 m1, m2, m3, m4 = st.columns(4)
@@ -233,16 +233,38 @@ m3.metric("Média/mês (Cirurgias)", formatar_num(media_ciru))
 m4.metric("Média/mês (Geral)", formatar_num(media_geral))
 
 st.write("") # Espaço em branco
+
 # Exibição Conversões
 st.markdown("**Taxas de Conversão (Global do Filtro)**")
 t1, t2, t3, t4 = st.columns(4)
 
-# Formatando direto com 2 casas decimais e trocando ponto por vírgula
 t1.metric("Exames por Consulta", f"{taxa_exam_cons:.2f}x".replace(".", ","), help="Para cada 1 consulta, quantos exames são realizados.")
 t2.metric("Conversão (Exames/Cons)", formatar_pct(taxa_exam_cons * 100))
-t3.metric("Cirurgias por Consulta", f"{taxa_ciru_cons:.2f}x".replace(".", ","), help="Para cada 1 consulta, quantas cirurgias são realizadas.")
+t3.metric("Conversão (Cirurgias/Cons)", formatar_pct(taxa_ciru_cons * 100), help="Percentual de consultas que resultam em cirurgia.")
 t4.metric("Consultas p/ 1 Cirurgia", f"{cons_para_ciru:.2f}".replace(".", ","), help="Quantas consultas em média são necessárias para gerar 1 cirurgia.")
 
+st.divider()
+
+st.markdown("**Distribuição do Volume de Produção**")
+df_pizza_totais = pd.DataFrame({
+    "Tipo": ["Consultas", "Exames", "Cirurgias"],
+    "Volume": [total_cons, total_exam, total_ciru]
+})
+
+fig_pizza_totais = px.pie(
+    df_pizza_totais, 
+    names="Tipo", 
+    values="Volume", 
+    hole=0.3
+)
+fig_pizza_totais.update_traces(textposition="inside", textinfo="percent+label")
+fig_pizza_totais.update_layout(margin=dict(l=10, r=10, t=10, b=10), height=350)
+
+col_vazia1, col_grafico, col_vazia2 = st.columns([1, 2, 1])
+with col_grafico:
+    st.plotly_chart(fig_pizza_totais, use_container_width=True)
+
+st.divider()
 
 df_mensal = (
     df_filtrado
@@ -280,6 +302,7 @@ with g4:
     st.plotly_chart(fig_total, use_container_width=True)
 
 st.markdown('</div>', unsafe_allow_html=True)
+
 # =========================
 # BASE POR MÉDICO (PERÍODO FILTRADO)
 # =========================
@@ -289,7 +312,7 @@ df_medicos = (
 )
 
 # =========================
-# ITEM 2 - PARTICIPAÇÃO (%) POR MÉDICO (ISOLADOS COM VALORES)
+# ITEM 2 - PARTICIPAÇÃO (%) POR MÉDICO
 # =========================
 st.markdown('<div class="section-card">', unsafe_allow_html=True)
 st.subheader("2. Participação de cada médico no total do período (%)")
@@ -303,29 +326,25 @@ else:
     base_perc["% Exames"] = np.where(total_exam > 0, (base_perc["Exames"] / total_exam) * 100, 0)
     base_perc["% Cirurgias"] = np.where(total_ciru > 0, (base_perc["Cirurgias"] / total_ciru) * 100, 0)
 
-    # Cálculo da altura dinâmica: garante pelo menos 400px e expande se tiver muitos médicos
     altura_dinamica = max(400, len(base_perc) * 30)
     layout_perc = dict(margin=dict(l=10, r=40, t=40, b=10), yaxis_title="", xaxis_title="%")
 
-    # Gráfico 1 - Consultas isolado
     fig_p_cons = px.bar(
         base_perc.sort_values("% Consultas", ascending=True),
         x="% Consultas", y="Médico", color="Grupo", orientation="h", title="% Consultas por médico",
-        text="% Consultas", # Adicionado o parâmetro text
+        text="% Consultas",
         color_discrete_map=CORES_GRUPO
     )
-    # Formatação do texto e posicionamento fora da barra para ficar mais legível
     fig_p_cons.update_traces(texttemplate='%{text:.1f}%', textposition='outside', cliponaxis=False)
     fig_p_cons.update_layout(**layout_perc, height=altura_dinamica)
     st.plotly_chart(fig_p_cons, use_container_width=True)
 
     st.divider()
 
-    # Gráfico 2 - Exames isolado
     fig_p_exam = px.bar(
         base_perc.sort_values("% Exames", ascending=True),
         x="% Exames", y="Médico", color="Grupo", orientation="h", title="% Exames por médico",
-        text="% Exames", # Adicionado o parâmetro text
+        text="% Exames",
         color_discrete_map=CORES_GRUPO
     )
     fig_p_exam.update_traces(texttemplate='%{text:.1f}%', textposition='outside', cliponaxis=False)
@@ -334,11 +353,10 @@ else:
 
     st.divider()
 
-    # Gráfico 3 - Cirurgias isolado
     fig_p_ciru = px.bar(
         base_perc.sort_values("% Cirurgias", ascending=True),
         x="% Cirurgias", y="Médico", color="Grupo", orientation="h", title="% Cirurgias por médico",
-        text="% Cirurgias", # Adicionado o parâmetro text
+        text="% Cirurgias",
         color_discrete_map=CORES_GRUPO
     )
     fig_p_ciru.update_traces(texttemplate='%{text:.1f}%', textposition='outside', cliponaxis=False)
@@ -348,7 +366,7 @@ else:
 st.markdown('</div>', unsafe_allow_html=True)
 
 # =========================
-# ITEM 3 - TOP 5 RANKINGS (BARRAS)
+# ITEM 3 - TOP 5 RANKINGS
 # =========================
 st.markdown('<div class="section-card">', unsafe_allow_html=True)
 st.subheader("3. Ranking de médicos (Top 5)")
@@ -393,7 +411,7 @@ else:
 st.markdown('</div>', unsafe_allow_html=True)
 
 # =========================
-# ITEM 4 - PRODUÇÃO POR GRUPO + PIZZA (SÓCIOS X RESTANTE)
+# ITEM 4 - PRODUÇÃO POR GRUPO + PIZZA
 # =========================
 st.markdown('<div class="section-card">', unsafe_allow_html=True)
 st.subheader("4. Produção por grupo")
@@ -421,17 +439,27 @@ else:
         df_socio_resto["Categoria"] = np.where(df_socio_resto["Grupo"] == "Sócios", "Sócios", "Restante")
         df_socio_resto = df_socio_resto.groupby("Categoria", as_index=False)["Total"].sum()
 
-        fig_pizza_socio = px.pie(df_socio_resto, names="Categoria", values="Total", title="Sócios x Restante (participação no total)")
+        fig_pizza_socio = px.pie(df_socio_resto, names="Categoria", values="Total", title="Sócios x Restante (Total de Atendimentos)")
         fig_pizza_socio.update_traces(textposition="inside", textinfo="percent+label").update_layout(margin=dict(l=10, r=10, t=40, b=10))
         st.plotly_chart(fig_pizza_socio, use_container_width=True)
 
 st.markdown('</div>', unsafe_allow_html=True)
 
 # =========================
-# ITEM 5 - PERFIL CLÍNICO X CIRÚRGICO (PIZZA + BARRAS)
+# ITEM 5 - PERFIL CLÍNICO X CIRÚRGICO
 # =========================
 st.markdown('<div class="section-card">', unsafe_allow_html=True)
 st.subheader("5. Avaliação do perfil médico (Clínico x Cirúrgico)")
+
+# Nova legenda explicativa
+st.markdown("""
+<div class='small-note'>
+    <b>Entenda a classificação:</b><br>
+    • <b>Clínico:</b> Foco em consultas e exames (baixa ou nenhuma taxa de cirurgias).<br>
+    • <b>Cirúrgico:</b> Alta taxa de conversão para cirurgias (ou apenas realiza cirurgias).<br>
+    • <b>Misto:</b> Perfil equilibrado entre consultas e cirurgias.
+</div><br>
+""", unsafe_allow_html=True)
 
 if df_medicos.empty:
     st.info("Sem dados para avaliar perfil.")
@@ -443,8 +471,8 @@ else:
     p1, p2 = st.columns(2)
 
     with p1:
-        df_perfil_pizza = df_perfil.groupby("Perfil", as_index=False)["Médico"].count().rename(columns={"Médico": "QtdMedicos"})
-        fig_pizza_perfil = px.pie(df_perfil_pizza, names="Perfil", values="QtdMedicos", title="Distribuição de perfis médicos")
+        df_perfil_pizza = df_perfil.groupby("Perfil", as_index=False)["Total"].sum()
+        fig_pizza_perfil = px.pie(df_perfil_pizza, names="Perfil", values="Total", title="Distribuição de atendimentos por perfil")
         fig_pizza_perfil.update_traces(textposition="inside", textinfo="percent+label").update_layout(margin=dict(l=10, r=10, t=40, b=10))
         st.plotly_chart(fig_pizza_perfil, use_container_width=True)
 
