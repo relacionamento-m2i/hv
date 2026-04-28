@@ -63,7 +63,7 @@ st.markdown("""
     }
 
     /* ---------------------------------------------------
-       ESTRUTURA DOS NOVOS CARDS PROFISSIONAIS (GRID FLEXBOX)
+       ESTRUTURA DOS NOVOS CARDS DE KPI (ALTO CONTRASTE)
        --------------------------------------------------- */
     .card-row {
         display: flex;
@@ -78,24 +78,24 @@ st.markdown("""
 
     .custom-metric-card {
         background-color: #ffffff;
-        border-radius: 16px;
-        padding: 20px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        border-radius: 12px;
+        padding: 20px 24px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         display: flex;
         flex-direction: column;
         justify-content: center;
-        border: 1px solid #edf2f7;
+        border: 1px solid #e2e8f0;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
     .custom-metric-card:hover {
         transform: translateY(-5px);
-        box-shadow: 0 12px 24px rgba(0,0,0,0.08);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
     }
 
     .custom-metric-title {
         font-size: 0.85rem;
-        font-weight: 600;
+        font-weight: 700;
         color: #718096;
         text-transform: uppercase;
         letter-spacing: 0.5px;
@@ -103,17 +103,18 @@ st.markdown("""
     }
 
     .custom-metric-value {
-        font-size: 1.9rem;
-        font-weight: 800;
-        color: #2d3748;
+        font-size: 2.2rem;
+        font-weight: 900;
+        color: #1a202c;
         margin: 0;
-        line-height: 1.2;
+        line-height: 1.1;
     }
     
     .custom-metric-sub {
-        font-size: 0.75rem;
+        font-size: 0.8rem;
         color: #a0aec0;
-        margin-top: 4px;
+        margin-top: 6px;
+        font-weight: 500;
     }
 
     /* Tabs Customizadas */
@@ -166,7 +167,7 @@ FELLOWS = {
     "RODRIGO MACIEL", "ROBERTA FERNANDA", "JOAO VITOR BRUSQUI"
 }
 
-PALETA_LIGHT = ["#4fd1c5", "#6b46c1", "#3182ce", "#ed64a6", "#f6ad55", "#cbd5e0"]
+PALETA_LIGHT = ["#4fd1c5", "#6b46c1", "#3182ce", "#ed64a6", "#f6ad55", "#cbd5e0", "#805ad5", "#e53e3e", "#dd6b20", "#38a169"]
 CORES_GRUPO = {
     "Sócios": "#4fd1c5",        
     "Fellows": "#6b46c1",       
@@ -203,41 +204,64 @@ def criar_ano_mes_label_vetorizado(anos, meses):
 # =========================
 @st.cache_data
 def carregar_dados():
-    caminho_arquivo = "EXAME_Base_BI.xlsx"
+    caminho_arquivo = "Consolidado_Hospital_Visao.xlsx"
 
     if not os.path.exists(caminho_arquivo):
-        return pd.DataFrame()
+        return pd.DataFrame(), pd.DataFrame()
 
-    df = pd.read_excel(caminho_arquivo, engine="openpyxl")
+    df_bi = pd.read_excel(caminho_arquivo, sheet_name="BI_Consolidado", engine="openpyxl")
+    
+    try:
+        df_det = pd.read_excel(caminho_arquivo, sheet_name="Detalhado_Klingo", engine="openpyxl")
+    except:
+        df_det = pd.DataFrame()
 
-    colunas_esperadas = ["Ano", "Mês", "Médico", "Consultas", "Exames", "Cirurgias", "Lentes", "Procedimentos", "Procedimentos e Lentes"]
+    colunas_esperadas = ["Ano", "Mês", "Médico", "Origem", "Consultas", "Exames", "Cirurgias", "Lentes", "Procedimentos", "Procedimentos e Lentes"]
     for c in colunas_esperadas:
-        if c not in df.columns:
-            df[c] = 0 if c not in ["Ano", "Mês", "Médico"] else None
+        if c not in df_bi.columns:
+            df_bi[c] = 0 if c not in ["Ano", "Mês", "Médico", "Origem"] else None
 
     cols_numericas = ["Consultas", "Exames", "Cirurgias", "Lentes", "Procedimentos", "Procedimentos e Lentes"]
     for col in cols_numericas:
-        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0).astype(int)
+        df_bi[col] = pd.to_numeric(df_bi[col], errors="coerce").fillna(0).astype(int)
     
-    df["Total"] = df[cols_numericas].sum(axis=1)
+    df_bi["Total"] = df_bi[["Consultas", "Exames", "Cirurgias", "Lentes", "Procedimentos"]].sum(axis=1)
     
-    df["Médico"] = df["Médico"].astype(str).str.strip().str.upper()
-    df["Mês"] = df["Mês"].astype(str).str.strip().str.upper()
+    df_bi["Médico"] = df_bi["Médico"].astype(str).str.strip().str.upper()
+    df_bi["Mês"] = df_bi["Mês"].astype(str).str.strip().str.upper()
     
-    numeros_mes = df["Mês"].str.extract(r'(\d+)')[0]
-    df["MesNum"] = pd.to_numeric(numeros_mes, errors='coerce')
-    df["MesNum"] = df["MesNum"].fillna(df["Mês"].map(MESES_ORDEM))
-    df["MesNome"] = df["MesNum"].map(MESES_NOME).fillna(df["Mês"])
+    df_bi["MesNum"] = df_bi["Mês"].map(MESES_ORDEM).fillna(0).astype(int)
+    df_bi["MesNome"] = df_bi["MesNum"].map(MESES_NOME).fillna(df_bi["Mês"])
 
-    df["Grupo"] = np.where(df["Médico"].isin(SOCIOS), "Sócios", 
-                  np.where(df["Médico"].isin(FELLOWS), "Fellows", "Corpo Clínico"))
+    df_bi["Grupo"] = np.where(df_bi["Médico"].isin(SOCIOS), "Sócios", 
+                  np.where(df_bi["Médico"].isin(FELLOWS), "Fellows", "Corpo Clínico"))
 
-    return df
+    if not df_det.empty:
+        # LIMPANDO ERROS GRAMATICAIS E CARACTERES QUEBRADOS
+        df_det["Procedimento"] = df_det["Procedimento"].astype(str)\
+            .str.replace("Ã”", "Ô")\
+            .str.replace("Ã\"", "Ô")\
+            .str.replace("ULTRASSÃ", "ULTRASSÔ", regex=False)\
+            .str.replace('ULTRASSÔ""NICA', 'ULTRASSÔNICA', regex=False)\
+            .str.replace('ULTRASSÔ"NICA', 'ULTRASSÔNICA', regex=False)
 
-df = carregar_dados()
+        df_det["Médico"] = df_det["Médico"].astype(str).str.strip().str.upper()
+        df_det["Mês"] = df_det["Mês"].astype(str).str.strip().str.upper()
+        
+        df_det["MesNum"] = df_det["Mês"].map(MESES_ORDEM).fillna(0).astype(int)
+        df_det["MesNome"] = df_det["MesNum"].map(MESES_NOME).fillna(df_det["Mês"])
+        
+        df_det["Grupo"] = np.where(df_det["Médico"].isin(SOCIOS), "Sócios", 
+                      np.where(df_det["Médico"].isin(FELLOWS), "Fellows", "Corpo Clínico"))
+        
+        df_det["Quantidade"] = pd.to_numeric(df_det["Quantidade"], errors="coerce").fillna(0)
 
-if df.empty:
-    st.error("Arquivo 'EXAME_Base_BI.xlsx' não encontrado ou inválido.")
+    return df_bi, df_det
+
+df_bi, df_det = carregar_dados()
+
+if df_bi.empty:
+    st.error("Arquivo 'Consolidado_Hospital_Visao.xlsx' não encontrado ou inválido.")
     st.stop()
 
 # =========================
@@ -245,33 +269,52 @@ if df.empty:
 # =========================
 st.sidebar.title("Filtros")
 
-anos_disponiveis = sorted(df["Ano"].dropna().unique().tolist())
+anos_disponiveis = sorted(df_bi["Ano"].dropna().unique().tolist())
 anos_sel = st.sidebar.multiselect("Ano(s)", anos_disponiveis, default=anos_disponiveis)
 
 if not anos_sel:
     st.sidebar.warning("Selecione pelo menos 1 ano.")
     st.stop()
 
-df_base_anos = df[df["Ano"].isin(anos_sel)].copy()
+df_bi_anos = df_bi[df_bi["Ano"].isin(anos_sel)].copy()
+df_det_anos = df_det[df_det["Ano"].isin(anos_sel)].copy() if not df_det.empty else pd.DataFrame()
 
-meses_ordenados = df_base_anos[["MesNum", "MesNome"]].dropna().drop_duplicates().sort_values("MesNum")
+meses_ordenados = df_bi_anos[["MesNum", "MesNome"]].dropna().drop_duplicates().sort_values("MesNum")
 lista_meses = meses_ordenados["MesNome"].tolist()
 meses_sel = st.sidebar.multiselect("Mês(es)", lista_meses, default=lista_meses)
 
-grupos_disp = ["Todos"] + sorted(df["Grupo"].dropna().unique().tolist())
+grupos_disp = ["Todos"] + sorted(df_bi["Grupo"].dropna().unique().tolist())
 grupo_sel = st.sidebar.selectbox("Grupo", grupos_disp)
 
-mascara = pd.Series(True, index=df_base_anos.index)
-if meses_sel: mascara &= df_base_anos["MesNome"].isin(meses_sel)
-if grupo_sel != "Todos": mascara &= df_base_anos["Grupo"] == grupo_sel
+mascara_bi = pd.Series(True, index=df_bi_anos.index)
+if not df_det_anos.empty:
+    mascara_det = pd.Series(True, index=df_det_anos.index)
 
-medicos_disp_base = df_base_anos[mascara]
+if meses_sel: 
+    mascara_bi &= df_bi_anos["MesNome"].isin(meses_sel)
+    if not df_det_anos.empty: mascara_det &= df_det_anos["MesNome"].isin(meses_sel)
+        
+if grupo_sel != "Todos": 
+    mascara_bi &= df_bi_anos["Grupo"] == grupo_sel
+    if not df_det_anos.empty: mascara_det &= df_det_anos["Grupo"] == grupo_sel
+
+medicos_disp_base = df_bi_anos[mascara_bi]
 medicos_lista = sorted(medicos_disp_base["Médico"].dropna().unique().tolist())
 medicos_sel = st.sidebar.multiselect("Médicos (opcional)", medicos_lista)
 
-if medicos_sel: mascara &= df_base_anos["Médico"].isin(medicos_sel)
+if medicos_sel: 
+    mascara_bi &= df_bi_anos["Médico"].isin(medicos_sel)
+    if not df_det_anos.empty: mascara_det &= df_det_anos["Médico"].isin(medicos_sel)
 
-df_filtrado = df_base_anos[mascara].copy()
+df_filtrado = df_bi_anos[mascara_bi].copy()
+
+if not df_det_anos.empty:
+    df_det_filtrado = df_det_anos[mascara_det].copy()
+    df_det_filtrado["AnoMesOrd"] = (df_det_filtrado["Ano"].astype(int) * 100) + df_det_filtrado["MesNum"].astype(int)
+    df_det_filtrado = df_det_filtrado.sort_values("AnoMesOrd")
+    df_det_filtrado["AnoMes"] = criar_ano_mes_label_vetorizado(df_det_filtrado["Ano"], df_det_filtrado["MesNum"])
+else:
+    df_det_filtrado = pd.DataFrame()
 
 # =========================
 # CABEÇALHO
@@ -282,9 +325,10 @@ st.caption("Visão consolidada de consultas, exames, cirurgias, lentes e procedi
 # =========================
 # ABAS (TABS)
 # =========================
-aba_geral, aba_rankings = st.tabs([
+aba_geral, aba_rankings, aba_detalhada = st.tabs([
     "📊 Visão Geral e Perfil", 
-    "🏆 Rankings (Top 10)"
+    "🏆 Rankings (Top 10)",
+    "🔍 Visão Detalhada (Raio-X)"
 ])
 
 # ==========================================
@@ -294,12 +338,11 @@ with aba_geral:
     st.markdown('<div class="section-card">', unsafe_allow_html=True)
     st.subheader("1. Totais, Médias e Taxas de Conversão")
 
-    # Cálculos
     total_cons = df_filtrado["Consultas"].sum()
     total_exam = df_filtrado["Exames"].sum()
     total_ciru = df_filtrado["Cirurgias"].sum()
     total_lent = df_filtrado["Lentes"].sum()
-    total_proc = df_filtrado["Procedimentos"].sum() + df_filtrado["Procedimentos e Lentes"].sum()
+    total_proc = df_filtrado["Procedimentos"].sum()
     total_geral = df_filtrado["Total"].sum()
 
     meses_unicos = df_filtrado[["Ano", "MesNum"]].drop_duplicates().shape[0]
@@ -315,34 +358,30 @@ with aba_geral:
     taxa_ciru_cons = (total_ciru / total_cons) if total_cons > 0 else 0
     cons_para_ciru = (1 / taxa_ciru_cons) if taxa_ciru_cons > 0 else 0
 
-    # ---------------------------------------------------------
-    # A MÁGICA ACONTECE AQUI: Substituição do st.metric por HTML Customizado
-    # ---------------------------------------------------------
-    
     st.markdown("**Volume Total**")
     st.markdown(f"""
         <div class="card-row">
-            <div class="custom-metric-card card-col-6" style="border-top: 4px solid #4fd1c5;">
+            <div class="custom-metric-card card-col-6" style="border-left: 5px solid #4fd1c5;">
                 <div class="custom-metric-title">Consultas</div>
                 <div class="custom-metric-value">{formatar_num(total_cons)}</div>
             </div>
-            <div class="custom-metric-card card-col-6" style="border-top: 4px solid #6b46c1;">
+            <div class="custom-metric-card card-col-6" style="border-left: 5px solid #6b46c1;">
                 <div class="custom-metric-title">Exames</div>
                 <div class="custom-metric-value">{formatar_num(total_exam)}</div>
             </div>
-            <div class="custom-metric-card card-col-6" style="border-top: 4px solid #3182ce;">
+            <div class="custom-metric-card card-col-6" style="border-left: 5px solid #3182ce;">
                 <div class="custom-metric-title">Cirurgias</div>
                 <div class="custom-metric-value">{formatar_num(total_ciru)}</div>
             </div>
-            <div class="custom-metric-card card-col-6" style="border-top: 4px solid #ed64a6;">
+            <div class="custom-metric-card card-col-6" style="border-left: 5px solid #ed64a6;">
                 <div class="custom-metric-title">Lentes</div>
                 <div class="custom-metric-value">{formatar_num(total_lent)}</div>
             </div>
-            <div class="custom-metric-card card-col-6" style="border-top: 4px solid #f6ad55;">
+            <div class="custom-metric-card card-col-6" style="border-left: 5px solid #f6ad55;">
                 <div class="custom-metric-title">Procedimentos</div>
                 <div class="custom-metric-value">{formatar_num(total_proc)}</div>
             </div>
-            <div class="custom-metric-card card-col-6" style="border-top: 4px solid #a0aec0; background-color: #f8fafc;">
+            <div class="custom-metric-card card-col-6" style="border-left: 5px solid #2d3748; background-color: #f8fafc;">
                 <div class="custom-metric-title" style="color: #4a5568;">Total Geral</div>
                 <div class="custom-metric-value">{formatar_num(total_geral)}</div>
             </div>
@@ -352,19 +391,19 @@ with aba_geral:
     st.markdown("**Média Mensal**")
     st.markdown(f"""
         <div class="card-row">
-            <div class="custom-metric-card card-col-4">
+            <div class="custom-metric-card card-col-4" style="border-left: 4px solid #cbd5e0;">
                 <div class="custom-metric-title">Média/mês (Consultas)</div>
                 <div class="custom-metric-value">{formatar_num(media_cons)}</div>
             </div>
-            <div class="custom-metric-card card-col-4">
+            <div class="custom-metric-card card-col-4" style="border-left: 4px solid #cbd5e0;">
                 <div class="custom-metric-title">Média/mês (Exames)</div>
                 <div class="custom-metric-value">{formatar_num(media_exam)}</div>
             </div>
-            <div class="custom-metric-card card-col-4">
+            <div class="custom-metric-card card-col-4" style="border-left: 4px solid #cbd5e0;">
                 <div class="custom-metric-title">Média/mês (Cirurgias)</div>
                 <div class="custom-metric-value">{formatar_num(media_ciru)}</div>
             </div>
-            <div class="custom-metric-card card-col-4">
+            <div class="custom-metric-card card-col-4" style="border-left: 4px solid #cbd5e0;">
                 <div class="custom-metric-title">Média/mês (Geral)</div>
                 <div class="custom-metric-value">{formatar_num(media_geral)}</div>
             </div>
@@ -374,28 +413,27 @@ with aba_geral:
     st.markdown("**Taxas de Conversão (Global do Filtro)**")
     st.markdown(f"""
         <div class="card-row">
-            <div class="custom-metric-card card-col-4">
+            <div class="custom-metric-card card-col-4" style="border-left: 4px solid #cbd5e0;">
                 <div class="custom-metric-title">Exames por Consulta</div>
                 <div class="custom-metric-value">{taxa_exam_cons:.3f}x</div>
                 <div class="custom-metric-sub">Para cada 1 consulta</div>
             </div>
-            <div class="custom-metric-card card-col-4">
+            <div class="custom-metric-card card-col-4" style="border-left: 4px solid #cbd5e0;">
                 <div class="custom-metric-title">Conversão (Exames/Cons)</div>
                 <div class="custom-metric-value">{formatar_pct(taxa_exam_cons * 100)}</div>
             </div>
-            <div class="custom-metric-card card-col-4">
+            <div class="custom-metric-card card-col-4" style="border-left: 4px solid #cbd5e0;">
                 <div class="custom-metric-title">Conversão (Cirurgias/Cons)</div>
                 <div class="custom-metric-value">{formatar_pct(taxa_ciru_cons * 100)}</div>
                 <div class="custom-metric-sub">% de consultas que viram cirurgia</div>
             </div>
-            <div class="custom-metric-card card-col-4">
+            <div class="custom-metric-card card-col-4" style="border-left: 4px solid #cbd5e0;">
                 <div class="custom-metric-title">Consultas p/ 1 Cirurgia</div>
                 <div class="custom-metric-value">{cons_para_ciru:.2f}</div>
                 <div class="custom-metric-sub">Qtd média necessária</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
-    # ---------------------------------------------------------
     
     st.divider()
 
@@ -486,7 +524,7 @@ with aba_geral:
             x="% Consultas", y="Médico", color="Grupo", orientation="h", title="% Consultas por médico",
             text="% Consultas", color_discrete_map=CORES_GRUPO, template="plotly_white"
         )
-        fig_p_cons.update_traces(texttemplate='%{text:.1f}%', textposition='outside', cliponaxis=False)
+        fig_p_cons.update_traces(texttemplate='%{text:.1f}%', textposition='outside', cliponaxis=False, textangle=0)
         fig_p_cons.update_layout(**layout_perc, height=altura_dinamica)
         st.plotly_chart(fig_p_cons, use_container_width=True)
 
@@ -497,7 +535,7 @@ with aba_geral:
             x="% Exames", y="Médico", color="Grupo", orientation="h", title="% Exames por médico",
             text="% Exames", color_discrete_map=CORES_GRUPO, template="plotly_white"
         )
-        fig_p_exam.update_traces(texttemplate='%{text:.1f}%', textposition='outside', cliponaxis=False)
+        fig_p_exam.update_traces(texttemplate='%{text:.1f}%', textposition='outside', cliponaxis=False, textangle=0)
         fig_p_exam.update_layout(**layout_perc, height=altura_dinamica)
         st.plotly_chart(fig_p_exam, use_container_width=True)
 
@@ -508,7 +546,7 @@ with aba_geral:
             x="% Cirurgias", y="Médico", color="Grupo", orientation="h", title="% Cirurgias por médico",
             text="% Cirurgias", color_discrete_map=CORES_GRUPO, template="plotly_white"
         )
-        fig_p_ciru.update_traces(texttemplate='%{text:.1f}%', textposition='outside', cliponaxis=False)
+        fig_p_ciru.update_traces(texttemplate='%{text:.1f}%', textposition='outside', cliponaxis=False, textangle=0)
         fig_p_ciru.update_layout(**layout_perc, height=altura_dinamica)
         st.plotly_chart(fig_p_ciru, use_container_width=True)
 
@@ -534,6 +572,7 @@ with aba_geral:
                 x="Grupo", y="Quantidade", color="Tipo", barmode="group", text="Quantidade", title="Comparativo por grupo",
                 template="plotly_white", color_discrete_sequence=PALETA_LIGHT
             )
+            fig_grupo.update_traces(textangle=0, textposition='outside', cliponaxis=False)
             fig_grupo.update_layout(margin=dict(l=10, r=10, t=40, b=10), legend_title_text="", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig_grupo, use_container_width=True)
 
@@ -582,6 +621,7 @@ with aba_geral:
                 df_perfil_bar.melt(id_vars="Perfil", value_vars=["Consultas", "Exames", "Cirurgias"], var_name="Tipo", value_name="Quantidade"),
                 x="Perfil", y="Quantidade", color="Tipo", barmode="group", title="Produção por perfil", template="plotly_white", color_discrete_sequence=PALETA_LIGHT
             )
+            fig_perfil_bar.update_traces(textangle=0, textposition='outside', cliponaxis=False)
             fig_perfil_bar.update_layout(margin=dict(l=10, r=10, t=40, b=10), legend_title_text="", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig_perfil_bar, use_container_width=True)
 
@@ -611,8 +651,6 @@ with aba_rankings:
         "Procedimentos e Lentes": "sum",
         "Total": "sum"
     })
-    
-    df_rank["Total Procedimentos"] = df_rank["Procedimentos"] + df_rank["Procedimentos e Lentes"]
 
     def plot_ranking(df, col, titulo, cor):
         top_df = df[df[col] > 0].nlargest(10, col).sort_values(col, ascending=True)
@@ -621,8 +659,8 @@ with aba_rankings:
         fig = px.bar(top_df, x=col, y="Médico", orientation='h', 
                      title=titulo, text=col, color_discrete_sequence=[cor], template="plotly_white")
         
-        fig.update_traces(textangle=0, textposition="auto", insidetextanchor="end")
-        fig.update_layout(margin=dict(l=10, r=20, t=40, b=10), height=350, yaxis_title="", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+        fig.update_traces(textangle=0, textposition="outside", cliponaxis=False)
+        fig.update_layout(margin=dict(l=10, r=40, t=40, b=10), height=350, yaxis_title="", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
         return fig
 
     r1, r2 = st.columns(2)
@@ -636,9 +674,9 @@ with aba_rankings:
         if fig_exames: st.plotly_chart(fig_exames, use_container_width=True)
         else: st.info("Sem dados para Exames")
 
-        fig_lentes = plot_ranking(df_rank, "Lentes", "👁️ Top 10 - Lentes", PALETA_LIGHT[4])
-        if fig_lentes: st.plotly_chart(fig_lentes, use_container_width=True)
-        else: st.info("Sem dados para Lentes")
+        fig_proc = plot_ranking(df_rank, "Procedimentos e Lentes", "⚙️ Top 10 - Proced. & Lentes", PALETA_LIGHT[5])
+        if fig_proc: st.plotly_chart(fig_proc, use_container_width=True)
+        else: st.info("Sem dados para Procedimentos e Lentes")
 
     with r2:
         fig_cons = plot_ranking(df_rank, "Consultas", "👨‍⚕️ Top 10 - Consultas", PALETA_LIGHT[2])
@@ -649,16 +687,180 @@ with aba_rankings:
         if fig_ciru: st.plotly_chart(fig_ciru, use_container_width=True)
         else: st.info("Sem dados para Cirurgias")
 
-        fig_proc = plot_ranking(df_rank, "Total Procedimentos", "⚙️ Top 10 - Procedimentos", PALETA_LIGHT[5])
-        if fig_proc: st.plotly_chart(fig_proc, use_container_width=True)
-        else: st.info("Sem dados para Procedimentos")
-
     st.divider()
     with st.expander("Ver Tabela Completa de Produção"):
         st.dataframe(
-            df_rank[["Médico", "Grupo", "Total", "Consultas", "Exames", "Cirurgias", "Lentes", "Total Procedimentos"]]
+            df_rank[["Médico", "Grupo", "Total", "Consultas", "Exames", "Cirurgias", "Procedimentos e Lentes"]]
+            .rename(columns={'Procedimentos e Lentes': 'Procedimentos & Lentes'})
             .sort_values("Total", ascending=False), 
             use_container_width=True, 
             hide_index=True
         )
+    st.markdown('</div>', unsafe_allow_html=True)
+
+
+# ==========================================
+# ABA 3 - VISÃO DETALHADA (KLINGO) "O Raio-X"
+# ==========================================
+with aba_detalhada:
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
+    st.subheader("Raio-X Analítico: Especialidades, Exames e Cirurgias")
+    st.caption("Visão granular mês a mês e por médico (Dados mapeados pelo sistema Klingo).")
+
+    if df_det_filtrado.empty:
+        st.warning("Não há dados detalhados (Klingo) para os filtros atuais.")
+    else:
+        # ----- VISÃO GERAL DE ESPECIALIDADES -----
+        df_cat_total = df_det_filtrado.groupby("Categoria", as_index=False)["Quantidade"].sum()
+        df_cat_total = df_cat_total[df_cat_total["Quantidade"] > 0].sort_values("Quantidade", ascending=True)
+        
+        st.markdown("**1. Produção por Especialidade Mapeada**")
+        if not df_cat_total.empty:
+            fig_cat = px.bar(
+                df_cat_total, x="Quantidade", y="Categoria", orientation="h",
+                text="Quantidade", template="plotly_white", 
+                color_discrete_sequence=[PALETA_LIGHT[0]]
+            )
+            fig_cat.update_traces(textposition="outside", textangle=0, cliponaxis=False)
+            fig_cat.update_layout(margin=dict(t=10, l=10, r=40, b=10), height=350, yaxis_title="")
+            st.plotly_chart(fig_cat, use_container_width=True)
+        else:
+            st.info("Nenhuma categoria encontrada.")
+
+        st.divider()
+
+        # ==========================================
+        # BLOCO 2: FOCO EM EXAMES
+        # ==========================================
+        st.markdown("### 🔬 Foco Operacional: EXAMES")
+        df_top_exames = df_det_filtrado[df_det_filtrado["Grupo_Geral"].str.upper() == "EXAMES"]
+        
+        if not df_top_exames.empty:
+            # 1. Ranking Full Width dos Exames
+            df_ex = df_top_exames.groupby("Procedimento", as_index=False)["Quantidade"].sum().nlargest(15, "Quantidade").sort_values("Quantidade", ascending=True)
+            fig_ex = px.bar(df_ex, x="Quantidade", y="Procedimento", orientation="h", title="Top 15 Exames Mais Realizados", text="Quantidade", template="plotly_white", color_discrete_sequence=[PALETA_LIGHT[1]])
+            fig_ex.update_traces(textposition="outside", textangle=0, cliponaxis=False)
+            fig_ex.update_layout(margin=dict(t=40, l=10, r=40, b=10), height=450, yaxis_title="")
+            st.plotly_chart(fig_ex, use_container_width=True)
+
+            # 2. Evolução dos Exames (Gráfico de Barras Agrupadas)
+            top_5_ex = df_ex.nlargest(5, "Quantidade")["Procedimento"].tolist()
+            df_evo_ex = df_top_exames[df_top_exames["Procedimento"].isin(top_5_ex)]
+            df_evo_ex = df_evo_ex.groupby(["AnoMesOrd", "AnoMes", "Procedimento"], as_index=False)["Quantidade"].sum().sort_values("AnoMesOrd")
+            
+            fig_evo_ex = px.bar(
+                df_evo_ex, x="AnoMes", y="Quantidade", color="Procedimento", barmode="group", 
+                text="Quantidade", title="Evolução Mensal em Barras (Top 5 Exames)", 
+                template="plotly_white", color_discrete_sequence=PALETA_LIGHT
+            )
+            fig_evo_ex.update_traces(textposition="outside", textangle=0, cliponaxis=False)
+            fig_evo_ex.update_layout(margin=dict(t=40, l=10, r=10, b=10), height=400, xaxis_title="", yaxis_title="Qtd")
+            st.plotly_chart(fig_evo_ex, use_container_width=True)
+
+            # 3. Top 10 Médicos em Exames Clássico
+            df_med_ex = df_top_exames.groupby("Médico", as_index=False)["Quantidade"].sum().nlargest(10, "Quantidade").sort_values("Quantidade", ascending=True)
+            fig_med_ex = px.bar(df_med_ex, x="Quantidade", y="Médico", orientation="h", title="Top 10 Médicos em Volume Geral de Exames", text="Quantidade", template="plotly_white", color_discrete_sequence=[PALETA_LIGHT[0]])
+            fig_med_ex.update_traces(textposition="outside", textangle=0, cliponaxis=False)
+            fig_med_ex.update_layout(margin=dict(t=40, l=10, r=40, b=10), height=400, yaxis_title="")
+            st.plotly_chart(fig_med_ex, use_container_width=True)
+
+        else:
+            st.info("Nenhum exame detalhado encontrado.")
+
+        st.divider()
+
+        # ==========================================
+        # BLOCO 3: FOCO EM CIRURGIAS
+        # ==========================================
+        st.markdown("### 🔪 Foco Operacional: CIRURGIAS")
+        df_top_cirurgias = df_det_filtrado[df_det_filtrado["Grupo_Geral"].str.upper() == "CIRURGIAS"]
+        
+        if not df_top_cirurgias.empty:
+            # 1. Ranking Full Width das Cirurgias
+            df_cir = df_top_cirurgias.groupby("Procedimento", as_index=False)["Quantidade"].sum().nlargest(15, "Quantidade").sort_values("Quantidade", ascending=True)
+            fig_cir = px.bar(df_cir, x="Quantidade", y="Procedimento", orientation="h", title="Top 15 Cirurgias Mais Realizadas", text="Quantidade", template="plotly_white", color_discrete_sequence=[PALETA_LIGHT[2]])
+            fig_cir.update_traces(textposition="outside", textangle=0, cliponaxis=False)
+            fig_cir.update_layout(margin=dict(t=40, l=10, r=40, b=10), height=450, yaxis_title="")
+            st.plotly_chart(fig_cir, use_container_width=True)
+
+            # 2. Evolução das Cirurgias (Gráfico de Barras Agrupadas)
+            top_5_cir = df_cir.nlargest(5, "Quantidade")["Procedimento"].tolist()
+            df_evo_cir = df_top_cirurgias[df_top_cirurgias["Procedimento"].isin(top_5_cir)]
+            df_evo_cir = df_evo_cir.groupby(["AnoMesOrd", "AnoMes", "Procedimento"], as_index=False)["Quantidade"].sum().sort_values("AnoMesOrd")
+            
+            fig_evo_cir = px.bar(
+                df_evo_cir, x="AnoMes", y="Quantidade", color="Procedimento", barmode="group", 
+                text="Quantidade", title="Evolução Mensal em Barras (Top 5 Cirurgias)", 
+                template="plotly_white", color_discrete_sequence=PALETA_LIGHT
+            )
+            fig_evo_cir.update_traces(textposition="outside", textangle=0, cliponaxis=False)
+            fig_evo_cir.update_layout(margin=dict(t=40, l=10, r=10, b=10), height=400, xaxis_title="", yaxis_title="Qtd")
+            st.plotly_chart(fig_evo_cir, use_container_width=True)
+
+            # 3. Top 10 Médicos em Cirurgias Clássico
+            df_med_cir = df_top_cirurgias.groupby("Médico", as_index=False)["Quantidade"].sum().nlargest(10, "Quantidade").sort_values("Quantidade", ascending=True)
+            fig_med_cir = px.bar(df_med_cir, x="Quantidade", y="Médico", orientation="h", title="Top 10 Cirurgiões em Volume Geral", text="Quantidade", template="plotly_white", color_discrete_sequence=[PALETA_LIGHT[0]])
+            fig_med_cir.update_traces(textposition="outside", textangle=0, cliponaxis=False)
+            fig_med_cir.update_layout(margin=dict(t=40, l=10, r=40, b=10), height=400, yaxis_title="")
+            st.plotly_chart(fig_med_cir, use_container_width=True)
+        else:
+            st.info("Nenhuma cirurgia detalhada encontrada.")
+
+        st.divider()
+
+        # ==========================================
+        # BLOCO 4: RAIO-X INDIVIDUAL (O PERFIL DO MÉDICO)
+        # ==========================================
+        st.markdown("### 👨‍⚕️ Raio-X Individual por Médico")
+        st.caption("Selecione um médico abaixo para destrinchar exatamente quais categorias e procedimentos compõem o volume dele.")
+        
+        medicos_detalhe = sorted(df_det_filtrado["Médico"].unique().tolist())
+        if medicos_detalhe:
+            medico_sel_raiox = st.selectbox("Selecione o Médico para análise:", medicos_detalhe)
+            df_med_raiox = df_det_filtrado[df_det_filtrado["Médico"] == medico_sel_raiox]
+            
+            rx1, rx2 = st.columns(2)
+            with rx1:
+                df_cat_med = df_med_raiox.groupby("Categoria", as_index=False)["Quantidade"].sum().sort_values("Quantidade", ascending=True)
+                fig_rx_cat = px.bar(df_cat_med, x="Quantidade", y="Categoria", orientation="h", title=f"Foco de Especialidade - {medico_sel_raiox}", text="Quantidade", template="plotly_white", color_discrete_sequence=[PALETA_LIGHT[6]])
+                fig_rx_cat.update_traces(textposition="outside", textangle=0, cliponaxis=False)
+                fig_rx_cat.update_layout(height=400, yaxis_title="", margin=dict(r=40))
+                st.plotly_chart(fig_rx_cat, use_container_width=True)
+                
+            with rx2:
+                df_proc_med = df_med_raiox.groupby("Procedimento", as_index=False)["Quantidade"].sum().nlargest(10, "Quantidade").sort_values("Quantidade", ascending=True)
+                fig_rx_proc = px.bar(df_proc_med, x="Quantidade", y="Procedimento", orientation="h", title=f"Top 10 Procedimentos Específicos - {medico_sel_raiox}", text="Quantidade", template="plotly_white", color_discrete_sequence=[PALETA_LIGHT[7]])
+                fig_rx_proc.update_traces(textposition="outside", textangle=0, cliponaxis=False)
+                fig_rx_proc.update_layout(height=400, yaxis_title="", margin=dict(r=40))
+                st.plotly_chart(fig_rx_proc, use_container_width=True)
+
+        st.divider()
+
+        # ----- LINHA 5: Tabela Analítica de Cruzamento -----
+        st.markdown("**Tabela Analítica (Cruzamento Flexível de Dados)**")
+        
+        filtro_col1, filtro_col2, filtro_col3 = st.columns(3)
+        
+        grupos_det = ["Todos"] + sorted(df_det_filtrado["Grupo_Geral"].unique().tolist())
+        g_sel = filtro_col1.selectbox("Filtrar por Frente (Ex: Cirurgias)", grupos_det)
+        
+        df_mostrar = df_det_filtrado.copy()
+        if g_sel != "Todos":
+            df_mostrar = df_mostrar[df_mostrar["Grupo_Geral"] == g_sel]
+
+        categorias_det = ["Todas"] + sorted(df_mostrar["Categoria"].unique().tolist())
+        cat_sel = filtro_col2.selectbox("Filtrar por Especialidade (Ex: Córnea)", categorias_det)
+        if cat_sel != "Todas":
+            df_mostrar = df_mostrar[df_mostrar["Categoria"] == cat_sel]
+            
+        procedimentos_det = ["Todos"] + sorted(df_mostrar["Procedimento"].unique().tolist())
+        proc_sel = filtro_col3.selectbox("Procedimento Específico", procedimentos_det)
+        if proc_sel != "Todos":
+            df_mostrar = df_mostrar[df_mostrar["Procedimento"] == proc_sel]
+            
+        df_tabela_final = df_mostrar.groupby(["Ano", "MesNome", "Médico", "Grupo_Geral", "Categoria", "Procedimento"], as_index=False)["Quantidade"].sum()
+        df_tabela_final = df_tabela_final.sort_values(by="Quantidade", ascending=False).rename(columns={"MesNome": "Mês"})
+        
+        st.dataframe(df_tabela_final, use_container_width=True, hide_index=True)
+        
     st.markdown('</div>', unsafe_allow_html=True)

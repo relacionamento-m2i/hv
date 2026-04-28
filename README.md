@@ -18,3 +18,6 @@ TIAGO GRANA
 RODRIGO MACIEL
 ROBERTA FERNANDA
 JOAO VITOR BRUSQUI
+
+Lógica implementada:
+Adicionar consulta, exames e cirurgias de PID KLINGO TRATADO para base_bi
