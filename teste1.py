@@ -14,21 +14,20 @@ st.set_page_config(
 )
 
 # =========================
-# ESTILO CUSTOMIZADO (CLEAN / SOFT UI PREMIUM COM CARDS CUSTOMIZADOS)
+# ESTILO CUSTOMIZADO
 # =========================
 st.markdown("""
     <style>
-    /* Fundo Principal: Cinza super claro/gelo para destacar os cartões brancos */
+    /* Fundo Principal: 100% Branco */
     .stApp {
-        background-color: #f4f7fb;
+        background-color: #ffffff;
         color: #2d3748;
     }
     
-    /* Sidebar Branca com sombra sutil */
+    /* Sidebar com leve contraste */
     section[data-testid="stSidebar"] {
-        background-color: #ffffff !important;
-        border-right: none;
-        box-shadow: 2px 0 20px rgba(0,0,0,0.03);
+        background-color: #f8fafc !important;
+        border-right: 1px solid #e2e8f0;
     }
 
     h1, h2, h3, .stMarkdown p {
@@ -48,22 +47,28 @@ st.markdown("""
         padding-bottom: 2rem;
     }
 
-    /* Estilo dos Blocos Grandes (Cards de Seção) */
-    .section-card {
-        background: #ffffff;
-        border: none;
-        border-radius: 20px;
-        padding: 28px;
-        margin-bottom: 24px;
-        box-shadow: 0 8px 24px rgba(149, 157, 165, 0.1); 
-    }
     .small-note {
         color: #718096;
         font-size: 0.9rem;
     }
 
     /* ---------------------------------------------------
-       ESTRUTURA DOS NOVOS CARDS DE KPI (ALTO CONTRASTE)
+       AJUSTE DOS BOTÕES DE FILTRO (TAGS DO MULTISELECT)
+       --------------------------------------------------- */
+    span[data-baseweb="tag"] {
+        background-color: #edf2f7 !important;
+        color: #2d3748 !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 6px !important;
+        padding: 4px 8px !important;
+        font-size: 14px !important;
+    }
+    span[data-baseweb="tag"] svg {
+        fill: #718096 !important; /* Cor do ícone de X */
+    }
+
+    /* ---------------------------------------------------
+       ESTRUTURA DOS CARDS DE KPI 
        --------------------------------------------------- */
     .card-row {
         display: flex;
@@ -80,7 +85,7 @@ st.markdown("""
         background-color: #ffffff;
         border-radius: 12px;
         padding: 20px 24px;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -89,8 +94,8 @@ st.markdown("""
     }
 
     .custom-metric-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        transform: translateY(-3px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     }
 
     .custom-metric-title {
@@ -117,23 +122,46 @@ st.markdown("""
         font-weight: 500;
     }
 
-    /* Tabs Customizadas */
+    /* ---------------------------------------------------
+       BORDAS E SOMBRAS NOS GRÁFICOS DO STREAMLIT
+       --------------------------------------------------- */
+    [data-testid="stPlotlyChart"] {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+        padding: 15px;
+        margin-bottom: 20px;
+        transition: all 0.3s ease;
+    }
+    
+    [data-testid="stPlotlyChart"]:hover {
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+    }
+
+    /* ---------------------------------------------------
+       TABS CUSTOMIZADAS (ABAS MAIS LARGAS)
+       --------------------------------------------------- */
     .stTabs [data-baseweb="tab-list"] {
         gap: 16px;
         background-color: transparent;
     }
     .stTabs [data-baseweb="tab"] {
-        height: 50px;
-        background-color: #ffffff;
+        height: 54px; /* Abas mais altas */
+        padding: 0 24px; /* Mais espaço nas laterais (para não ficar apertado) */
+        background-color: #f8fafc;
         border-radius: 10px 10px 0 0;
         color: #718096;
-        border: none;
-        box-shadow: 0 -2px 10px rgba(0,0,0,0.02);
+        border: 1px solid #e2e8f0;
+        border-bottom: none;
+        font-size: 1rem;
+        white-space: nowrap;
     }
     .stTabs [aria-selected="true"] {
         background-color: #ffffff !important;
         color: #6b46c1 !important; 
-        border-bottom: 3px solid #6b46c1 !important;
+        border-top: 3px solid #6b46c1 !important;
         font-weight: bold;
     }
     </style>
@@ -237,7 +265,6 @@ def carregar_dados():
                   np.where(df_bi["Médico"].isin(FELLOWS), "Fellows", "Corpo Clínico"))
 
     if not df_det.empty:
-        # LIMPANDO ERROS GRAMATICAIS E CARACTERES QUEBRADOS
         df_det["Procedimento"] = df_det["Procedimento"].astype(str)\
             .str.replace("Ã”", "Ô")\
             .str.replace("Ã\"", "Ô")\
@@ -335,7 +362,6 @@ aba_geral, aba_rankings, aba_detalhada = st.tabs([
 # ABA 1 - VISÃO GERAL
 # ==========================================
 with aba_geral:
-    st.markdown('<div class="section-card">', unsafe_allow_html=True)
     st.subheader("1. Totais, Médias e Taxas de Conversão")
 
     total_cons = df_filtrado["Consultas"].sum()
@@ -454,7 +480,7 @@ with aba_geral:
         template="plotly_white"
     )
     fig_pizza_totais.update_traces(textposition="inside", textinfo="percent+label")
-    fig_pizza_totais.update_layout(margin=dict(l=10, r=10, t=10, b=10), height=350, paper_bgcolor='#ffffff', plot_bgcolor='#ffffff', font_color='#1a202c')
+    fig_pizza_totais.update_layout(margin=dict(l=10, r=10, t=10, b=10), height=350, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#1a202c')
 
     col_vazia1, col_grafico, col_vazia2 = st.columns([1, 2, 1])
     with col_grafico:
@@ -475,7 +501,15 @@ with aba_geral:
     g1, g2 = st.columns(2)
     g3, g4 = st.columns(2)
 
-    layout_padrao = dict(margin=dict(l=10, r=10, t=40, b=10), xaxis_title="", yaxis_title="Quantidade", paper_bgcolor='#ffffff', plot_bgcolor='#ffffff', font=dict(color='#1a202c'))
+    # Layout com showgrid=False adicionado para remover as grades
+    layout_padrao = dict(
+        margin=dict(l=10, r=10, t=40, b=10), 
+        xaxis=dict(title="", showgrid=False, zeroline=False), 
+        yaxis=dict(title="Quantidade", showgrid=False, zeroline=False), 
+        paper_bgcolor='rgba(0,0,0,0)', 
+        plot_bgcolor='rgba(0,0,0,0)', 
+        font=dict(color='#1a202c')
+    )
 
     with g1:
         fig_cons = px.area(df_mensal, x="AnoMes", y="Consultas", title="Consultas mensais (Ano/Mês)", template="plotly_white", color_discrete_sequence=[PALETA_LIGHT[0]])
@@ -497,7 +531,7 @@ with aba_geral:
         fig_total.update_traces(mode='lines+markers').update_layout(**layout_padrao).update_xaxes(tickangle=-45)
         st.plotly_chart(fig_total, use_container_width=True, theme=None)
 
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.divider()
 
     # Item 2 - Participação por Médico
     df_medicos = (
@@ -505,7 +539,6 @@ with aba_geral:
         .sum()
     )
 
-    st.markdown('<div class="section-card">', unsafe_allow_html=True)
     st.subheader("2. Participação de cada médico no total do período (%)")
 
     if df_medicos.empty:
@@ -517,7 +550,15 @@ with aba_geral:
         base_perc["% Cirurgias"] = np.where(total_ciru > 0, (base_perc["Cirurgias"] / total_ciru) * 100, 0)
 
         altura_dinamica = max(400, len(base_perc) * 30)
-        layout_perc = dict(margin=dict(l=10, r=40, t=40, b=10), yaxis_title="", xaxis_title="%", paper_bgcolor='#ffffff', plot_bgcolor='#ffffff', font=dict(color='#1a202c'))
+        # Layout com showgrid=False adicionado
+        layout_perc = dict(
+            margin=dict(l=10, r=40, t=40, b=10), 
+            xaxis=dict(title="%", showgrid=False, zeroline=False), 
+            yaxis=dict(title="", showgrid=False, zeroline=False), 
+            paper_bgcolor='rgba(0,0,0,0)', 
+            plot_bgcolor='rgba(0,0,0,0)', 
+            font=dict(color='#1a202c')
+        )
 
         fig_p_cons = px.bar(
             base_perc.sort_values("% Consultas", ascending=True),
@@ -550,10 +591,9 @@ with aba_geral:
         fig_p_ciru.update_layout(**layout_perc, height=altura_dinamica)
         st.plotly_chart(fig_p_ciru, use_container_width=True, theme=None)
 
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.divider()
 
     # Item 3 - Produção por grupo 
-    st.markdown('<div class="section-card">', unsafe_allow_html=True)
     st.subheader("3. Produção por grupo")
 
     df_grupo = (
@@ -573,7 +613,11 @@ with aba_geral:
                 template="plotly_white", color_discrete_sequence=PALETA_LIGHT
             )
             fig_grupo.update_traces(textangle=0, textposition='outside', cliponaxis=False)
-            fig_grupo.update_layout(margin=dict(l=10, r=10, t=40, b=10), legend_title_text="", paper_bgcolor='#ffffff', plot_bgcolor='#ffffff', font_color='#1a202c')
+            fig_grupo.update_layout(
+                margin=dict(l=10, r=10, t=40, b=10), legend_title_text="", 
+                xaxis=dict(showgrid=False, zeroline=False), yaxis=dict(showgrid=False, zeroline=False),
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#1a202c'
+            )
             st.plotly_chart(fig_grupo, use_container_width=True, theme=None)
 
         with g2:
@@ -582,13 +626,12 @@ with aba_geral:
             df_socio_resto = df_socio_resto.groupby("Categoria", as_index=False)["Total"].sum()
 
             fig_pizza_socio = px.pie(df_socio_resto, names="Categoria", values="Total", title="Sócios x Restante (Total de Atendimentos)", template="plotly_white", color_discrete_sequence=PALETA_LIGHT)
-            fig_pizza_socio.update_traces(textposition="inside", textinfo="percent+label").update_layout(margin=dict(l=10, r=10, t=40, b=10), paper_bgcolor='#ffffff', font_color='#1a202c')
+            fig_pizza_socio.update_traces(textposition="inside", textinfo="percent+label").update_layout(margin=dict(l=10, r=10, t=40, b=10), paper_bgcolor='rgba(0,0,0,0)', font_color='#1a202c')
             st.plotly_chart(fig_pizza_socio, use_container_width=True, theme=None)
 
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.divider()
 
     # Item 4 - Perfil Clínico x Cirúrgico
-    st.markdown('<div class="section-card">', unsafe_allow_html=True)
     st.subheader("4. Avaliação do perfil médico (Clínico x Cirúrgico)")
 
     st.markdown("""
@@ -612,7 +655,7 @@ with aba_geral:
         with p1:
             df_perfil_pizza = df_perfil.groupby("Perfil", as_index=False)["Total"].sum()
             fig_pizza_perfil = px.pie(df_perfil_pizza, names="Perfil", values="Total", hole=0.4, title="Distribuição de atendimentos por perfil", template="plotly_white", color_discrete_sequence=PALETA_LIGHT)
-            fig_pizza_perfil.update_traces(textposition="inside", textinfo="percent+label").update_layout(margin=dict(l=10, r=10, t=40, b=10), paper_bgcolor='#ffffff', font_color='#1a202c')
+            fig_pizza_perfil.update_traces(textposition="inside", textinfo="percent+label").update_layout(margin=dict(l=10, r=10, t=40, b=10), paper_bgcolor='rgba(0,0,0,0)', font_color='#1a202c')
             st.plotly_chart(fig_pizza_perfil, use_container_width=True, theme=None)
 
         with p2:
@@ -622,7 +665,11 @@ with aba_geral:
                 x="Perfil", y="Quantidade", color="Tipo", barmode="group", title="Produção por perfil", template="plotly_white", color_discrete_sequence=PALETA_LIGHT
             )
             fig_perfil_bar.update_traces(textangle=0, textposition='outside', cliponaxis=False)
-            fig_perfil_bar.update_layout(margin=dict(l=10, r=10, t=40, b=10), legend_title_text="", paper_bgcolor='#ffffff', plot_bgcolor='#ffffff', font_color='#1a202c')
+            fig_perfil_bar.update_layout(
+                margin=dict(l=10, r=10, t=40, b=10), legend_title_text="", 
+                xaxis=dict(showgrid=False, zeroline=False), yaxis=dict(showgrid=False, zeroline=False),
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#1a202c'
+            )
             st.plotly_chart(fig_perfil_bar, use_container_width=True, theme=None)
 
         tabela_perfil = df_perfil[["Médico", "Grupo", "Consultas", "Exames", "Cirurgias", "Taxa Cirúrgica", "Perfil"]].copy()
@@ -632,13 +679,11 @@ with aba_geral:
         with st.expander("Ver tabela de classificação de perfil"):
             st.dataframe(tabela_perfil, use_container_width=True, hide_index=True)
 
-    st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
 # ABA 2 - RANKINGS (TOP 10 LÍDERES)
 # ==========================================
 with aba_rankings:
-    st.markdown('<div class="section-card">', unsafe_allow_html=True)
     st.subheader("Líderes de Produção (Top 10)")
     st.caption("Ranking dinâmico baseado no filtro de data e grupo selecionado.")
 
@@ -660,7 +705,11 @@ with aba_rankings:
                      title=titulo, text=col, color_discrete_sequence=[cor], template="plotly_white")
         
         fig.update_traces(textangle=0, textposition="outside", cliponaxis=False)
-        fig.update_layout(margin=dict(l=10, r=40, t=40, b=10), height=350, yaxis_title="", paper_bgcolor='#ffffff', plot_bgcolor='#ffffff', font_color='#1a202c')
+        fig.update_layout(
+            margin=dict(l=10, r=40, t=40, b=10), height=350, 
+            xaxis=dict(showgrid=False, zeroline=False, title=""), yaxis=dict(showgrid=False, zeroline=False, title=""),
+            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#1a202c'
+        )
         return fig
 
     r1, r2 = st.columns(2)
@@ -696,14 +745,12 @@ with aba_rankings:
             use_container_width=True, 
             hide_index=True
         )
-    st.markdown('</div>', unsafe_allow_html=True)
 
 
 # ==========================================
 # ABA 3 - VISÃO DETALHADA (KLINGO) "O Raio-X"
 # ==========================================
 with aba_detalhada:
-    st.markdown('<div class="section-card">', unsafe_allow_html=True)
     st.subheader("Raio-X Analítico: Especialidades, Exames e Cirurgias")
     st.caption("Visão granular mês a mês e por médico (Dados mapeados pelo sistema Klingo).")
 
@@ -722,7 +769,11 @@ with aba_detalhada:
                 color_discrete_sequence=[PALETA_LIGHT[0]]
             )
             fig_cat.update_traces(textposition="outside", textangle=0, cliponaxis=False)
-            fig_cat.update_layout(margin=dict(t=10, l=10, r=40, b=10), height=350, yaxis_title="", paper_bgcolor='#ffffff', plot_bgcolor='#ffffff', font_color='#1a202c')
+            fig_cat.update_layout(
+                margin=dict(t=10, l=10, r=40, b=10), height=350, 
+                xaxis=dict(showgrid=False, zeroline=False), yaxis=dict(showgrid=False, zeroline=False, title=""), 
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#1a202c'
+            )
             st.plotly_chart(fig_cat, use_container_width=True, theme=None)
         else:
             st.info("Nenhuma categoria encontrada.")
@@ -740,7 +791,11 @@ with aba_detalhada:
             df_ex = df_top_exames.groupby("Procedimento", as_index=False)["Quantidade"].sum().nlargest(15, "Quantidade").sort_values("Quantidade", ascending=True)
             fig_ex = px.bar(df_ex, x="Quantidade", y="Procedimento", orientation="h", title="Top 15 Exames Mais Realizados", text="Quantidade", template="plotly_white", color_discrete_sequence=[PALETA_LIGHT[1]])
             fig_ex.update_traces(textposition="outside", textangle=0, cliponaxis=False)
-            fig_ex.update_layout(margin=dict(t=40, l=10, r=40, b=10), height=450, yaxis_title="", paper_bgcolor='#ffffff', plot_bgcolor='#ffffff', font_color='#1a202c')
+            fig_ex.update_layout(
+                margin=dict(t=40, l=10, r=40, b=10), height=450, 
+                xaxis=dict(showgrid=False, zeroline=False), yaxis=dict(showgrid=False, zeroline=False, title=""), 
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#1a202c'
+            )
             st.plotly_chart(fig_ex, use_container_width=True, theme=None)
 
             # 2. Evolução dos Exames (Gráfico de Barras Agrupadas)
@@ -754,14 +809,22 @@ with aba_detalhada:
                 template="plotly_white", color_discrete_sequence=PALETA_LIGHT
             )
             fig_evo_ex.update_traces(textposition="outside", textangle=0, cliponaxis=False)
-            fig_evo_ex.update_layout(margin=dict(t=40, l=10, r=10, b=10), height=400, xaxis_title="", yaxis_title="Qtd", paper_bgcolor='#ffffff', plot_bgcolor='#ffffff', font_color='#1a202c')
+            fig_evo_ex.update_layout(
+                margin=dict(t=40, l=10, r=10, b=10), height=400, 
+                xaxis=dict(showgrid=False, zeroline=False, title=""), yaxis=dict(showgrid=False, zeroline=False, title="Qtd"), 
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#1a202c'
+            )
             st.plotly_chart(fig_evo_ex, use_container_width=True, theme=None)
 
             # 3. Top 10 Médicos em Exames Clássico
             df_med_ex = df_top_exames.groupby("Médico", as_index=False)["Quantidade"].sum().nlargest(10, "Quantidade").sort_values("Quantidade", ascending=True)
             fig_med_ex = px.bar(df_med_ex, x="Quantidade", y="Médico", orientation="h", title="Top 10 Médicos em Volume Geral de Exames", text="Quantidade", template="plotly_white", color_discrete_sequence=[PALETA_LIGHT[0]])
             fig_med_ex.update_traces(textposition="outside", textangle=0, cliponaxis=False)
-            fig_med_ex.update_layout(margin=dict(t=40, l=10, r=40, b=10), height=400, yaxis_title="", paper_bgcolor='#ffffff', plot_bgcolor='#ffffff', font_color='#1a202c')
+            fig_med_ex.update_layout(
+                margin=dict(t=40, l=10, r=40, b=10), height=400, 
+                xaxis=dict(showgrid=False, zeroline=False), yaxis=dict(showgrid=False, zeroline=False, title=""), 
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#1a202c'
+            )
             st.plotly_chart(fig_med_ex, use_container_width=True, theme=None)
 
         else:
@@ -780,7 +843,11 @@ with aba_detalhada:
             df_cir = df_top_cirurgias.groupby("Procedimento", as_index=False)["Quantidade"].sum().nlargest(15, "Quantidade").sort_values("Quantidade", ascending=True)
             fig_cir = px.bar(df_cir, x="Quantidade", y="Procedimento", orientation="h", title="Top 15 Cirurgias Mais Realizadas", text="Quantidade", template="plotly_white", color_discrete_sequence=[PALETA_LIGHT[2]])
             fig_cir.update_traces(textposition="outside", textangle=0, cliponaxis=False)
-            fig_cir.update_layout(margin=dict(t=40, l=10, r=40, b=10), height=450, yaxis_title="", paper_bgcolor='#ffffff', plot_bgcolor='#ffffff', font_color='#1a202c')
+            fig_cir.update_layout(
+                margin=dict(t=40, l=10, r=40, b=10), height=450, 
+                xaxis=dict(showgrid=False, zeroline=False), yaxis=dict(showgrid=False, zeroline=False, title=""), 
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#1a202c'
+            )
             st.plotly_chart(fig_cir, use_container_width=True, theme=None)
 
             # 2. Evolução das Cirurgias (Gráfico de Barras Agrupadas)
@@ -794,14 +861,22 @@ with aba_detalhada:
                 template="plotly_white", color_discrete_sequence=PALETA_LIGHT
             )
             fig_evo_cir.update_traces(textposition="outside", textangle=0, cliponaxis=False)
-            fig_evo_cir.update_layout(margin=dict(t=40, l=10, r=10, b=10), height=400, xaxis_title="", yaxis_title="Qtd", paper_bgcolor='#ffffff', plot_bgcolor='#ffffff', font_color='#1a202c')
+            fig_evo_cir.update_layout(
+                margin=dict(t=40, l=10, r=10, b=10), height=400, 
+                xaxis=dict(showgrid=False, zeroline=False, title=""), yaxis=dict(showgrid=False, zeroline=False, title="Qtd"), 
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#1a202c'
+            )
             st.plotly_chart(fig_evo_cir, use_container_width=True, theme=None)
 
             # 3. Top 10 Médicos em Cirurgias Clássico
             df_med_cir = df_top_cirurgias.groupby("Médico", as_index=False)["Quantidade"].sum().nlargest(10, "Quantidade").sort_values("Quantidade", ascending=True)
             fig_med_cir = px.bar(df_med_cir, x="Quantidade", y="Médico", orientation="h", title="Top 10 Cirurgiões em Volume Geral", text="Quantidade", template="plotly_white", color_discrete_sequence=[PALETA_LIGHT[0]])
             fig_med_cir.update_traces(textposition="outside", textangle=0, cliponaxis=False)
-            fig_med_cir.update_layout(margin=dict(t=40, l=10, r=40, b=10), height=400, yaxis_title="", paper_bgcolor='#ffffff', plot_bgcolor='#ffffff', font_color='#1a202c')
+            fig_med_cir.update_layout(
+                margin=dict(t=40, l=10, r=40, b=10), height=400, 
+                xaxis=dict(showgrid=False, zeroline=False), yaxis=dict(showgrid=False, zeroline=False, title=""), 
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#1a202c'
+            )
             st.plotly_chart(fig_med_cir, use_container_width=True, theme=None)
         else:
             st.info("Nenhuma cirurgia detalhada encontrada.")
@@ -824,14 +899,22 @@ with aba_detalhada:
                 df_cat_med = df_med_raiox.groupby("Categoria", as_index=False)["Quantidade"].sum().sort_values("Quantidade", ascending=True)
                 fig_rx_cat = px.bar(df_cat_med, x="Quantidade", y="Categoria", orientation="h", title=f"Foco de Especialidade - {medico_sel_raiox}", text="Quantidade", template="plotly_white", color_discrete_sequence=[PALETA_LIGHT[6]])
                 fig_rx_cat.update_traces(textposition="outside", textangle=0, cliponaxis=False)
-                fig_rx_cat.update_layout(height=400, yaxis_title="", margin=dict(r=40), paper_bgcolor='#ffffff', plot_bgcolor='#ffffff', font_color='#1a202c')
+                fig_rx_cat.update_layout(
+                    height=400, margin=dict(r=40), 
+                    xaxis=dict(showgrid=False, zeroline=False), yaxis=dict(showgrid=False, zeroline=False, title=""), 
+                    paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#1a202c'
+                )
                 st.plotly_chart(fig_rx_cat, use_container_width=True, theme=None)
                 
             with rx2:
                 df_proc_med = df_med_raiox.groupby("Procedimento", as_index=False)["Quantidade"].sum().nlargest(10, "Quantidade").sort_values("Quantidade", ascending=True)
                 fig_rx_proc = px.bar(df_proc_med, x="Quantidade", y="Procedimento", orientation="h", title=f"Top 10 Procedimentos Específicos - {medico_sel_raiox}", text="Quantidade", template="plotly_white", color_discrete_sequence=[PALETA_LIGHT[7]])
                 fig_rx_proc.update_traces(textposition="outside", textangle=0, cliponaxis=False)
-                fig_rx_proc.update_layout(height=400, yaxis_title="", margin=dict(r=40), paper_bgcolor='#ffffff', plot_bgcolor='#ffffff', font_color='#1a202c')
+                fig_rx_proc.update_layout(
+                    height=400, margin=dict(r=40), 
+                    xaxis=dict(showgrid=False, zeroline=False), yaxis=dict(showgrid=False, zeroline=False, title=""), 
+                    paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#1a202c'
+                )
                 st.plotly_chart(fig_rx_proc, use_container_width=True, theme=None)
 
         st.divider()
@@ -862,5 +945,3 @@ with aba_detalhada:
         df_tabela_final = df_tabela_final.sort_values(by="Quantidade", ascending=False).rename(columns={"MesNome": "Mês"})
         
         st.dataframe(df_tabela_final, use_container_width=True, hide_index=True)
-        
-    st.markdown('</div>', unsafe_allow_html=True)
